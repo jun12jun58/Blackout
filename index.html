@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비정형 라이츠 아웃 (Lights Out)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            min-height: 100vh;
+            min-height: 100svh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 112px clamp(10px, 3vw, 24px) 24px;
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            width: 100%;
+            padding: 10px clamp(10px, 3vw, 24px);
+            background-color: rgba(255, 255, 255, 0.96);
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        }
+
+        .top-bar-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .brand-and-status {
+            order: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .brand {
+            color: #0f172a;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 20px;
+            padding: clamp(14px, 4vw, 30px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            max-width: 460px;
+            width: 100%;
+            aspect-ratio: 1;
+            flex: none;
+            justify-content: center;
+        }
+
+        .board-container {
+            position: relative;
+            background-color: #f1f5f9;
+            padding: clamp(8px, 3vw, 16px);
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: min(100%, 400px);
+            aspect-ratio: 1;
+            flex: 0 1 auto;
+        }
+
+        .grid {
+            display: grid;
+            gap: clamp(4px, 1.5vw, 10px);
+            flex: none;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+            position: relative;
+            font-size: clamp(14px, 4vw, 22px);
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .cell.empty {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .cell.off {
+            background-color: #ffffff;
+            border: 2px solid #cbd5e1;
+            color: #64748b;
+        }
+
+        .cell.off:hover {
+            border-color: #94a3b8;
+        }
+
+        .cell.on {
+            background: linear-gradient(135deg, #fef08a 0%, #facc15 100%);
+            border: 2px solid #eab308;
+            color: #854d0e;
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.35);
+        }
+
+        .cell.on:hover {
+            box-shadow: 0 6px 16px rgba(250, 204, 21, 0.45);
+        }
+
+        .cell.preview {
+            box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.55) !important;
+        }
+
+        .cell.autoplay-target {
+            animation: pulse-purple 0.8s infinite alternate;
+        }
+
+        @keyframes pulse-purple {
+            0% { box-shadow: 0 0 0 2px #a855f7; transform: scale(0.96); }
+            100% { box-shadow: 0 0 0 6px #7e22ce; transform: scale(1.04); }
+        }
+
+        .controls {
+            order: 2;
+            display: flex;
+            gap: clamp(4px, 2vw, 10px);
+            width: 100%;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 9px 10px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            color: #334155;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background-color: #f8fafc;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+
+        .btn.primary {
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+        }
+
+        .btn.primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .win-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.92);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .win-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .win-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #16a34a;
+        }
+
+        @media (max-width: 520px) {
+            .btn {
+                padding: 8px 4px;
+                font-size: clamp(10px, 3vw, 12px);
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div class="top-bar-inner">
+        <div class="brand-and-status">
+            <div class="brand">Blackout</div>
+            <div class="status" id="moveCount">0</div>
+        </div>
+        <div class="controls">
+            <button class="btn" id="resetBtn" onclick="resetCurrentLevel()">다시하기</button>
+            <button class="btn" id="solveBtn" onclick="startAutoSolve()">정답 보기</button>
+            <button class="btn primary" id="newBtn" onclick="initGame()">새 게임</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="board-container">
+        <div class="grid" id="grid"></div>
+        <div class="win-overlay" id="winOverlay">
+            <div class="win-title">퍼즐을 해결했습니다.</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const TYPE_REGULAR = 'R';
+    const TYPE_DIR = 'D';
+    const TYPE_KNIGHT = 'K';
+
+    const DIRS = [
+        { r: -1, c: 0, icon: '↑' },
+        { r: 1, c: 0, icon: '↓' },
+        { r: 0, c: -1, icon: '←' },
+        { r: 0, c: 1, icon: '→' }
+    ];
+
+    const KNIGHT_OFFSETS = [
+        { r: -2, c: -1 }, { r: -2, c: 1 },
+        { r: -1, c: -2 }, { r: -1, c: 2 },
+        { r: 1, c: -2 },  { r: 1, c: 2 },
+        { r: 2, c: -1 },  { r: 2, c: 1 }
+    ];
+
+    let gridRows = 0;
+    let gridCols = 0;
+    let board = []; 
+    let initialStates = [];
+    let initialTypes = [];
+    let initialDirs = [];
+    let solutionSteps = [];
+    let moves = 0;
+    let isAutoplay = false;
+    let autoplayTimer = null;
+
+    function initGame() {
+        stopAutoplay();
+        moves = 0;
+        updateMoveDisplay();
+
+        gridRows = 5;
+        gridCols = 5;
+        const mask = Array.from({ length: gridRows }, () => Array(gridCols).fill(false));
+        const targetCellCount = Math.round(gridRows * gridCols * (0.5 + Math.random() * 0.35));
+        const fullRow = Math.floor(Math.random() * gridRows);
+        const fullCol = Math.floor(Math.random() * gridCols);
+        for (let c = 0; c < gridCols; c++) mask[fullRow][c] = true;
+        for (let r = 0; r < gridRows; r++) mask[r][fullCol] = true;
+
+        let activeCellCount = gridRows + gridCols - 1;
+        while (activeCellCount < targetCellCount) {
+            const frontier = [];
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    if (!mask[r][c]) continue;
+                    [{ r: r - 1, c }, { r: r + 1, c }, { r, c: c - 1 }, { r, c: c + 1 }].forEach(pos => {
+                        if (pos.r >= 0 && pos.r < gridRows && pos.c >= 0 && pos.c < gridCols && !mask[pos.r][pos.c]) {
+                            frontier.push(pos);
+                        }
+                    });
+                }
+            }
+            const next = frontier[Math.floor(Math.random() * frontier.length)];
+            mask[next.r][next.c] = true;
+            activeCellCount++;
+        }
+
+        for (let r = 0; r < gridRows; r++) {
+            const activeCols = mask[r].reduce((count, active) => count + Number(active), 0);
+            const availableCols = Array.from({ length: gridCols }, (_, c) => c).filter(c => !mask[r][c]);
+            for (let i = 0; i < 3 - activeCols; i++) {
+                const index = Math.floor(Math.random() * availableCols.length);
+                mask[r][availableCols.splice(index, 1)[0]] = true;
+            }
+        }
+
+        for (let c = 0; c < gridCols; c++) {
+            const activeRows = mask.reduce((count, row) => count + Number(row[c]), 0);
+            const availableRows = Array.from({ length: gridRows }, (_, r) => r).filter(r => !mask[r][c]);
+            for (let i = 0; i < 3 - activeRows; i++) {
+                const index = Math.floor(Math.random() * availableRows.length);
+                mask[availableRows.splice(index, 1)[0]][c] = true;
+            }
+        }
+
+        board = [];
+        initialStates = [];
+        initialTypes = [];
+        initialDirs = [];
+
+        // 1. 보드 틀 생성
+        for (let r = 0; r < gridRows; r++) {
+            board[r] = [];
+            initialStates[r] = [];
+            initialTypes[r] = [];
+            initialDirs[r] = [];
+            for (let c = 0; c < gridCols; c++) {
+                if (mask[r][c]) {
+                    // 전등 종류 확률: 일반(70%), 방향(15%), 나이트(15%)
+                    const rand = Math.random();
+                    let type = TYPE_REGULAR;
+                    let dirIdx = 0;
+
+                    if (rand > 0.85) {
+                        type = TYPE_KNIGHT;
+                    } else if (rand > 0.70) {
+                        type = TYPE_DIR;
+                        dirIdx = Math.floor(Math.random() * 4);
+                    }
+
+                    board[r][c] = {
+                        active: true,
+                        isOn: false,
+                        type: type,
+                        dirIdx: dirIdx
+                    };
+                } else {
+                    board[r][c] = { active: false, isOn: false };
+                }
+            }
+        }
+
+        // 각 전등이 다른 전등 하나 이상에 영향을 주도록 보정합니다.
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (board[r][c].active && getAffectedCells(r, c).length === 1) {
+                    board[r][c].type = TYPE_REGULAR;
+                }
+            }
+        }
+
+        // 2. 풀이 가능한 스테이지 역산 생성
+        solutionSteps = [];
+        const activeCells = [];
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (board[r][c].active) activeCells.push({ r, c });
+            }
+        }
+
+        const toggleCount = Math.min(activeCells.length, Math.floor(Math.random() * 4) + 4);
+        const shuffled = [...activeCells];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        for (let i = 0; i < toggleCount; i++) {
+            const target = shuffled[i];
+            solutionSteps.push({ r: target.r, c: target.c });
+            applyToggle(target.r, target.c);
+        }
+
+        if (!activeCells.some(pos => board[pos.r][pos.c].isOn)) {
+            const target = activeCells[Math.floor(Math.random() * activeCells.length)];
+            solutionSteps.push(target);
+            applyToggle(target.r, target.c);
+        }
+
+        // 초기 상태 백업
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (board[r][c].active) {
+                    initialStates[r][c] = board[r][c].isOn;
+                    initialTypes[r][c] = board[r][c].type;
+                    initialDirs[r][c] = board[r][c].dirIdx;
+                }
+            }
+        }
+
+        document.getElementById('winOverlay').classList.remove('show');
+        renderBoard();
+    }
+
+    function getAffectedCells(r, c) {
+        const affected = [];
+        if (!board[r] || !board[r][c] || !board[r][c].active) return affected;
+
+        affected.push({ r, c });
+        const cell = board[r][c];
+
+        if (cell.type === TYPE_REGULAR) {
+            const offsets = [{r:-1, c:0}, {r:1, c:0}, {r:0, c:-1}, {r:0, c:1}];
+            offsets.forEach(o => {
+                const nr = r + o.r, nc = c + o.c;
+                if (isValidCell(nr, nc)) affected.push({ r: nr, c: nc });
+            });
+        } else if (cell.type === TYPE_DIR) {
+            const dir = DIRS[cell.dirIdx];
+            let nr = r + dir.r;
+            let nc = c + dir.c;
+            while (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols) {
+                if (board[nr][nc].active) {
+                    affected.push({ r: nr, c: nc });
+                }
+                nr += dir.r;
+                nc += dir.c;
+            }
+        } else if (cell.type === TYPE_KNIGHT) {
+            KNIGHT_OFFSETS.forEach(o => {
+                const nr = r + o.r, nc = c + o.c;
+                if (isValidCell(nr, nc)) affected.push({ r: nr, c: nc });
+            });
+        }
+
+        return affected;
+    }
+
+    function isValidCell(r, c) {
+        return r >= 0 && r < gridRows && c >= 0 && c < gridCols && board[r][c].active;
+    }
+
+    function applyToggle(r, c) {
+        const affected = getAffectedCells(r, c);
+        affected.forEach(pos => {
+            board[pos.r][pos.c].isOn = !board[pos.r][pos.c].isOn;
+        });
+    }
+
+    function handleCellClick(r, c) {
+        if (isAutoplay) return;
+        applyToggle(r, c);
+        moves++;
+        updateMoveDisplay();
+        renderBoard();
+        checkWin();
+    }
+
+    function renderBoard() {
+        const gridElem = document.getElementById('grid');
+        const boardElem = document.querySelector('.board-container');
+        const boardStyles = getComputedStyle(boardElem);
+        const horizontalPadding = parseFloat(boardStyles.paddingLeft) + parseFloat(boardStyles.paddingRight);
+        const verticalPadding = parseFloat(boardStyles.paddingTop) + parseFloat(boardStyles.paddingBottom);
+        const gap = Math.min(10, Math.max(4, window.innerWidth * 0.015));
+        const availableWidth = boardElem.clientWidth - horizontalPadding;
+        const availableHeight = boardElem.clientHeight - verticalPadding;
+        const widthLimitedCellSize = (availableWidth - gap * (gridCols - 1)) / gridCols;
+        const heightLimitedCellSize = (availableHeight - gap * (gridRows - 1)) / gridRows;
+        const cellSize = Math.max(1, Math.min(68, widthLimitedCellSize, heightLimitedCellSize));
+        gridElem.style.setProperty('--cell-size', `${cellSize}px`);
+        gridElem.style.gap = `${gap}px`;
+        gridElem.style.gridTemplateColumns = `repeat(${gridCols}, ${cellSize}px)`;
+        gridElem.style.gridTemplateRows = `repeat(${gridRows}, ${cellSize}px)`;
+        gridElem.innerHTML = '';
+
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                const cellDiv = document.createElement('div');
+                const cellData = board[r][c];
+
+                if (!cellData.active) {
+                    cellDiv.className = 'cell empty';
+                } else {
+                    cellDiv.className = `cell ${cellData.isOn ? 'on' : 'off'}`;
+                    cellDiv.dataset.r = r;
+                    cellDiv.dataset.c = c;
+
+                    if (cellData.type === TYPE_DIR) {
+                        cellDiv.textContent = DIRS[cellData.dirIdx].icon;
+                    } else if (cellData.type === TYPE_KNIGHT) {
+                        cellDiv.textContent = '♞';
+                    }
+
+                    cellDiv.addEventListener('mouseenter', () => showPreview(r, c));
+                    cellDiv.addEventListener('mouseleave', clearPreview);
+                    cellDiv.addEventListener('click', () => handleCellClick(r, c));
+                }
+
+                gridElem.appendChild(cellDiv);
+            }
+        }
+    }
+
+    function showPreview(r, c) {
+        if (isAutoplay) return;
+        const affected = getAffectedCells(r, c);
+        affected.forEach(pos => {
+            const elem = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
+            if (elem) elem.classList.add('preview');
+        });
+    }
+
+    function clearPreview() {
+        document.querySelectorAll('.cell.preview').forEach(el => el.classList.remove('preview'));
+    }
+
+    function resetCurrentLevel() {
+        stopAutoplay();
+        moves = 0;
+        updateMoveDisplay();
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (board[r][c].active) {
+                    board[r][c].isOn = initialStates[r][c];
+                    board[r][c].type = initialTypes[r][c];
+                    board[r][c].dirIdx = initialDirs[r][c];
+                }
+            }
+        }
+        document.getElementById('winOverlay').classList.remove('show');
+        renderBoard();
+    }
+
+    function startAutoSolve() {
+        if (isAutoplay) return;
+        resetCurrentLevel();
+
+        isAutoplay = true;
+        setButtonsDisabled(true);
+
+        let stepIndex = 0;
+        autoplayTimer = setInterval(() => {
+            if (stepIndex >= solutionSteps.length) {
+                stopAutoplay();
+                checkWin();
+                return;
+            }
+
+            const step = solutionSteps[stepIndex];
+            const targetElem = document.querySelector(`.cell[data-r="${step.r}"][data-c="${step.c}"]`);
+
+            if (targetElem) {
+                targetElem.classList.add('autoplay-target');
+                setTimeout(() => {
+                    if (targetElem) targetElem.classList.remove('autoplay-target');
+                    applyToggle(step.r, step.c);
+                    moves++;
+                    updateMoveDisplay();
+                    renderBoard();
+                }, 300);
+            }
+
+            stepIndex++;
+        }, 700);
+    }
+
+    function stopAutoplay() {
+        if (autoplayTimer) clearInterval(autoplayTimer);
+        isAutoplay = false;
+        setButtonsDisabled(false);
+        document.querySelectorAll('.cell.autoplay-target').forEach(el => el.classList.remove('autoplay-target'));
+    }
+
+    function setButtonsDisabled(disabled) {
+        document.getElementById('solveBtn').disabled = disabled;
+    }
+
+    function checkWin() {
+        let allOff = true;
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                if (board[r][c].active && board[r][c].isOn) {
+                    allOff = false;
+                    break;
+                }
+            }
+        }
+
+        if (allOff) {
+            stopAutoplay();
+            document.getElementById('winOverlay').classList.add('show');
+        }
+    }
+
+    function updateMoveDisplay() {
+        document.getElementById('moveCount').textContent = moves;
+    }
+
+    window.addEventListener('resize', renderBoard);
+
+    // 게임 시작
+    initGame();
+</script>
+</body>
+</html>
